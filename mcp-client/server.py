@@ -272,7 +272,7 @@ async def analyze_distance_distribution(file_path: str, distance_col: str = "dis
 
 
 @mcp.tool()
-async def hotspot_analysis_getis_ord_gi_star(file_path: str, lat_col: str, lon_col: str, value_col: str, distance_threshold: float = None) -> str:
+async def hotspot_analysis_getis_ord_gi_star(file_path: str, lat_col: str, lon_col: str, value_col: str, distance_threshold: float = 1000.0) -> str:
     """
     基于Getis-Ord Gi*的热点分析。
     Args:
@@ -280,9 +280,9 @@ async def hotspot_analysis_getis_ord_gi_star(file_path: str, lat_col: str, lon_c
         lat_col: 纬度字段名
         lon_col: 经度字段名
         value_col: 参与分析的数值字段名
-        distance_threshold: 邻域距离（米），如果为None则使用数据中的distance列
+        distance_threshold: 邻域距离（米），可选范围如1000、5000、10000等，默认1000米。越大则邻域更广，热点更易聚集。
     Returns:
-        JSON字符串，包含每个点的Gi*、Z分数、p值、热点/冷点标签等
+        JSON字符串，包含每个点的Gi*、Z分数、p值、热点/冷点标签等，并显示实际使用的邻域距离
     """
     if not os.path.exists(file_path):
         return json.dumps({
@@ -325,10 +325,12 @@ async def hotspot_analysis_getis_ord_gi_star(file_path: str, lat_col: str, lon_c
             wij = np.zeros((n, n), dtype=int)
             for i in range(n):
                 wij[i] = (dists[i] <= distance_arr[i]).astype(int)
+            used_distance = "variable (from data)"
         else:
             if distance_threshold is None:
                 distance_threshold = 1000.0  # 默认值
             wij = (dists <= distance_threshold).astype(int)
+            used_distance = float(distance_threshold)
         
         np.fill_diagonal(wij, 0)
         
@@ -379,7 +381,7 @@ async def hotspot_analysis_getis_ord_gi_star(file_path: str, lat_col: str, lon_c
         return json.dumps({
             "status": "success",
             "count": n,
-            "distance_threshold": float(distance_threshold) if distance_threshold is not None else "variable",
+            "distance_threshold": used_distance,
             "results": results
         }, ensure_ascii=False, indent=2)
     except Exception as e:
