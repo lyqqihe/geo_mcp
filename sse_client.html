@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoMCP SSE 客户端</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .connection-status {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .connection-status.connected {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .connection-status.disconnected {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .function-card {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .function-card h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #495057;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        button {
+            background-color: #4b6584;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #3c5270;
+        }
+        .result-container {
+            margin-top: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+        .tab-container {
+            margin-top: 20px;
+        }
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 15px;
+        }
+        .tab-button {
+            padding: 10px 15px;
+            background-color: transparent;
+            border: none;
+            color: #495057;
+            margin-right: 5px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab-button.active {
+            color: #4b6584;
+            border-bottom: 2px solid #4b6584;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        #eventLog {
+            width: 100%;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ced4da;
+            padding: 10px;
+            font-family: monospace;
+            margin-top: 10px;
+            background-color: #f8f9fa;
+        }
+        .event-item {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .event-item.heartbeat {
+            color: #6c757d;
+        }
+        .event-item.result {
+            color: #28a745;
+        }
+        .event-item.error {
+            color: #dc3545;
+        }
+        .event-item .timestamp {
+            color: #6c757d;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GeoMCP SSE 客户端</h1>
+        
+        <div id="connectionStatus" class="connection-status disconnected">
+            <div>
+                <span>状态：</span>
+                <span id="statusText">未连接</span>
+            </div>
+            <div>
+                <button id="connectButton">连接服务器</button>
+                <button id="disconnectButton" disabled>断开连接</button>
+            </div>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab-buttons">
+                <button class="tab-button active" data-tab="geoAnalysis">地理空间分析</button>
+                <button class="tab-button" data-tab="gaodeAPI">高德地图API</button>
+                <button class="tab-button" data-tab="eventMonitor">事件监控</button>
+            </div>
+            
+            <!-- 地理空间分析 Tab -->
+            <div id="geoAnalysis" class="tab-content active">
+                <div class="function-card">
+                    <h3>测地线距离计算</h3>
+                    <div class="form-group">
+                        <label for="coordinates">坐标点 (格式: "纬度_经度,纬度_经度")</label>
+                        <input type="text" id="coordinates" placeholder="例: 39.90923_116.397428,31.23039_121.473702">
+                    </div>
+                    <button onclick="callFunction('calculate_geodesic_distance', { coordinates_json: document.getElementById('coordinates').value })">计算距离</button>
+                    <div id="distanceResult" class="result-container"></div>
+                </div>
+                
+                <div class="function-card">
+                    <h3>热点分析 (Getis-Ord Gi*)</h3>
+                    <div class="form-group">
+                        <label for="hotspotFile">数据文件路径</label>
+                        <input type="text" id="hotspotFile" placeholder="data/geo_hotspot_data.csv">
+                    </div>
+                    <div class="form-group">
+                        <label for="latCol">纬度字段名</label>
+                        <input type="text" id="latCol" placeholder="latitude">
+                    </div>
+                    <div class="form-group">
+                        <label for="lonCol">经度字段名</label>
+                        <input type="text" id="lonCol" placeholder="longitude">
+                    </div>
+                    <div class="form-group">
+                        <label for="valueCol">值字段名</label>
+                        <input type="text" id="valueCol" placeholder="value">
+                    </div>
+                    <div class="form-group">
+                        <label for="distanceThreshold">邻域距离(米)</label>
+                        <input type="number" id="distanceThreshold" value="1000">
+                    </div>
+                    <button onclick="callFunction('hotspot_analysis_getis_ord_gi_star', { 
+                        file_path: document.getElementById('hotspotFile').value,
+                        lat_col: document.getElementById('latCol').value,
+                        lon_col: document.getElementById('lonCol').value,
+                        value_col: document.getElementById('valueCol').value,
+                        distance_threshold: parseFloat(document.getElementById('distanceThreshold').value)
+                    })">执行热点分析</button>
+                    <div id="hotspotResult" class="result-container"></div>
+                </div>
+                
+                <div class="function-card">
+                    <h3>数据文件预览</h3>
+                    <div class="form-group">
+                        <label for="previewFile">数据文件路径</label>
+                        <input type="text" id="previewFile" placeholder="data/geo_hotspot_data.csv">
+                    </div>
+                    <div class="form-group">
+                        <label for="previewRows">预览行数</label>
+                        <input type="number" id="previewRows" value="5">
+                    </div>
+                    <button onclick="callFunction('read_table_file', { 
+                        file_path: document.getElementById('previewFile').value,
+                        nrows: parseInt(document.getElementById('previewRows').value)
+                    })">预览数据</button>
+                    <div id="previewResult" class="result-container"></div>
+                </div>
+            </div>
+            
+            <!-- 高德地图API Tab -->
+            <div id="gaodeAPI" class="tab-content">
+                <div class="function-card">
+                    <h3>地理编码（地址转坐标）</h3>
+                    <div class="form-group">
+                        <label for="address">地址</label>
+                        <input type="text" id="address" placeholder="北京市朝阳区阜通东大街6号">
+                    </div>
+                    <div class="form-group">
+                        <label for="city">城市（可选）</label>
+                        <input type="text" id="city" placeholder="北京">
+                    </div>
+                    <button onclick="callFunction('geocode_address', { 
+                        address: document.getElementById('address').value,
+                        city: document.getElementById('city').value
+                    })">地理编码</button>
+                    <div id="geocodeResult" class="result-container"></div>
+                </div>
+                
+                <div class="function-card">
+                    <h3>周边POI搜索</h3>
+                    <div class="form-group">
+                        <label for="location">中心点坐标（经度,纬度）</label>
+                        <input type="text" id="location" placeholder="116.473168,39.993015">
+                    </div>
+                    <div class="form-group">
+                        <label for="keywords">关键词</label>
+                        <input type="text" id="keywords" placeholder="餐馆">
+                    </div>
+                    <div class="form-group">
+                        <label for="radius">搜索半径(米)</label>
+                        <input type="number" id="radius" value="1000">
+                    </div>
+                    <button onclick="callFunction('search_nearby_poi', { 
+                        location: document.getElementById('location').value,
+                        keywords: document.getElementById('keywords').value,
+                        radius: parseInt(document.getElementById('radius').value)
+                    })">搜索POI</button>
+                    <div id="poiResult" class="result-container"></div>
+                </div>
+                
+                <div class="function-card">
+                    <h3>路线距离计算</h3>
+                    <div class="form-group">
+                        <label for="origin">起点坐标（经度,纬度）</label>
+                        <input type="text" id="origin" placeholder="116.481028,39.989643">
+                    </div>
+                    <div class="form-group">
+                        <label for="destination">终点坐标（经度,纬度）</label>
+                        <input type="text" id="destination" placeholder="116.434446,39.90816">
+                    </div>
+                    <div class="form-group">
+                        <label for="mode">出行方式</label>
+                        <select id="mode">
+                            <option value="driving">驾车</option>
+                            <option value="walking">步行</option>
+                            <option value="bicycling">骑行</option>
+                            <option value="transit">公交</option>
+                        </select>
+                    </div>
+                    <button onclick="callFunction('calculate_route_distance', { 
+                        origin: document.getElementById('origin').value,
+                        destination: document.getElementById('destination').value,
+                        mode: document.getElementById('mode').value
+                    })">计算路线距离</button>
+                    <div id="routeResult" class="result-container"></div>
+                </div>
+            </div>
+            
+            <!-- 事件监控 Tab -->
+            <div id="eventMonitor" class="tab-content">
+                <h2>SSE 事件监控</h2>
+                <div id="eventLog"></div>
+                <button id="clearEventsButton">清空事件日志</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let eventSource = null;
+        let clientId = null;
+        const baseUrl = 'http://localhost:8000'; // 根据实际情况修改
+        
+        // 连接到SSE服务器
+        document.getElementById('connectButton').addEventListener('click', connectToServer);
+        document.getElementById('disconnectButton').addEventListener('click', disconnectFromServer);
+        document.getElementById('clearEventsButton').addEventListener('click', () => {
+            document.getElementById('eventLog').innerHTML = '';
+        });
+        
+        // Tab切换功能
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                // 移除所有active类
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                
+                // 为当前tab添加active类
+                this.classList.add('active');
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // 连接到服务器
+        function connectToServer() {
+            try {
+                eventSource = new EventSource(`${baseUrl}/sse`);
+                
+                // 连接建立事件
+                eventSource.addEventListener('connection', function(event) {
+                    const data = JSON.parse(event.data);
+                    clientId = data.client_id;
+                    
+                    // 更新UI
+                    document.getElementById('statusText').textContent = '已连接';
+                    document.getElementById('connectionStatus').className = 'connection-status connected';
+                    document.getElementById('connectButton').disabled = true;
+                    document.getElementById('disconnectButton').disabled = false;
+                    
+                    // 记录事件
+                    logEvent('connection', data);
+                });
+                
+                // 心跳事件
+                eventSource.addEventListener('heartbeat', function(event) {
+                    const data = JSON.parse(event.data);
+                    logEvent('heartbeat', data);
+                });
+                
+                // 结果事件
+                eventSource.addEventListener('result', function(event) {
+                    const data = JSON.parse(event.data);
+                    
+                    // 根据函数名更新对应的结果区域
+                    if (data.function === 'calculate_geodesic_distance') {
+                        document.getElementById('distanceResult').textContent = formatResult(data.result);
+                    } else if (data.function === 'hotspot_analysis_getis_ord_gi_star') {
+                        document.getElementById('hotspotResult').textContent = formatResult(data.result);
+                    } else if (data.function === 'read_table_file') {
+                        document.getElementById('previewResult').textContent = formatResult(data.result);
+                    } else if (data.function === 'geocode_address') {
+                        document.getElementById('geocodeResult').textContent = formatResult(data.result);
+                    } else if (data.function === 'search_nearby_poi') {
+                        document.getElementById('poiResult').textContent = formatResult(data.result);
+                    } else if (data.function === 'calculate_route_distance') {
+                        document.getElementById('routeResult').textContent = formatResult(data.result);
+                    }
+                    
+                    // 记录事件
+                    logEvent('result', data);
+                });
+                
+                // 错误处理
+                eventSource.onerror = function(error) {
+                    console.error('SSE连接错误:', error);
+                    logEvent('error', { message: '连接错误', error: error });
+                    
+                    // 更新UI
+                    document.getElementById('statusText').textContent = '连接错误';
+                    document.getElementById('connectionStatus').className = 'connection-status disconnected';
+                    document.getElementById('connectButton').disabled = false;
+                    document.getElementById('disconnectButton').disabled = true;
+                    
+                    // 关闭连接
+                    if (eventSource) {
+                        eventSource.close();
+                        eventSource = null;
+                    }
+                };
+                
+            } catch (err) {
+                console.error('无法连接到SSE服务器:', err);
+                alert('无法连接到SSE服务器，请检查服务器是否运行。');
+            }
+        }
+        
+        // 断开连接
+        function disconnectFromServer() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                clientId = null;
+                
+                // 更新UI
+                document.getElementById('statusText').textContent = '已断开';
+                document.getElementById('connectionStatus').className = 'connection-status disconnected';
+                document.getElementById('connectButton').disabled = false;
+                document.getElementById('disconnectButton').disabled = true;
+                
+                logEvent('disconnection', { message: '客户端主动断开连接' });
+            }
+        }
+        
+        // 调用MCP函数
+        async function callFunction(functionName, params) {
+            if (!clientId) {
+                alert('未连接到服务器，请先连接');
+                return;
+            }
+            
+            try {
+                // 准备请求数据
+                const requestData = {
+                    function: functionName,
+                    params: params,
+                    client_id: clientId
+                };
+                
+                // 发送请求
+                const response = await fetch(`${baseUrl}/mcp_call`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                // 处理响应
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    console.error('MCP调用错误:', result);
+                    alert(`调用失败: ${result.detail || '未知错误'}`);
+                    logEvent('error', { function: functionName, error: result });
+                } else {
+                    console.log('MCP调用成功:', result);
+                    logEvent('call', { function: functionName, params: params });
+                }
+                
+            } catch (err) {
+                console.error('调用函数出错:', err);
+                alert(`调用函数出错: ${err.message}`);
+                logEvent('error', { function: functionName, error: err.message });
+            }
+        }
+        
+        // 格式化结果显示
+        function formatResult(result) {
+            try {
+                // 如果结果是JSON字符串，则解析并美化
+                const parsed = JSON.parse(result);
+                return JSON.stringify(parsed, null, 2);
+            } catch {
+                // 如果解析失败，直接返回原始结果
+                return result;
+            }
+        }
+        
+        // 记录事件到事件日志
+        function logEvent(type, data) {
+            const eventLog = document.getElementById('eventLog');
+            const eventItem = document.createElement('div');
+            eventItem.className = `event-item ${type}`;
+            
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toLocaleTimeString();
+            
+            const eventContent = document.createElement('pre');
+            
+            if (type === 'heartbeat') {
+                eventContent.textContent = `[${timestamp.textContent}] 心跳事件`;
+            } else {
+                eventContent.textContent = `[${timestamp.textContent}] ${type.toUpperCase()}: ${JSON.stringify(data, null, 2)}`;
+            }
+            
+            eventItem.appendChild(eventContent);
+            eventLog.appendChild(eventItem);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+    </script>
+</body>
+</html> 
