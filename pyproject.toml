@@ -1,0 +1,18 @@
+[project]
+name = "geo-mcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.12",
+    "geopy>=2.4.1",
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.9.0",
+    "numpy>=2.2.5",
+    "openai>=1.78.1",
+    "pandas>=2.2.3",
+    "pyyaml>=6.0.2",
+    "scikit-learn>=1.6.1",
+    "scipy>=1.15.3",
+]

@@ -1,0 +1,37 @@
+# 地理空间分析MCP服务配置示例文件
+# 复制此文件为config.yaml并修改相关设置
+
+# API配置
+api:
+  # 高德地图API密钥
+  # 请在高德开放平台注册并获取: https://lbs.amap.com/
+  gaode_key: "5dc52aa6190b78509d95283a0b49d3c3"
+  
+  # OpenAI API配置（如果需要搭配大模型使用）
+  openai_key: "sk-HgownpFGGCsGNqYs701354E28eE742BfA26eBaDe50874415"
+  openai_base_url: "http://8.140.63.6:3000/v1"
+  openai_model: "claude-3-7-sonnet-latest"
+
+# 地理空间分析配置
+spatial:
+  # 默认坐标系
+  default_crs: "EPSG:4326"
+  # 距离单位
+  distance_unit: "km"
+  # 默认热点分析邻域距离（米）
+  default_hotspot_distance: 1000
+
+# 系统配置
+system:
+  # 数据文件默认目录
+  data_dir: "./data"
+  # 结果输出目录
+  output_dir: "./output"
+  # 临时文件目录
+  temp_dir: "./temp"
+
+# 调试选项
+debug:
+  enabled: false
+  log_level: "info"   # 可选值: debug, info, warning, error
+  log_file: "geo_mcp.log" 
